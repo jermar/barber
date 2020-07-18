@@ -1,0 +1,161 @@
+; Barber - demo pro osobni pocitac PP 01
+; Autor: Jakub Jermar
+; Verze: 1.0
+; Datum: 18.5.2020
+; 
+; Program kresli rotujici barber's pole[0]. Cilem je ukazat jednoduchy efekt
+; dosazitelny pomoci podpory vertikalniho scrollu obrazovky na PP 01.
+;
+; [0] https://en.wikipedia.org/wiki/Barber's_pole
+;
+; Program se sklada ze tri hlavnich casti:
+;
+; 1. vykresleni prvniho radku tyce pomoci kombinovanych zapisu pres zeleny
+;    bitplane
+; 2. vykresleni zbylych 255 radku tyce, kdy je cast odpovidajici tyci zarotovana
+;    o 1 pixel doprava oproti predchozimu radku; tato cast se provadi pro kazdy
+;    barevny bitplane zvlast
+; 3. toceni registrem vertikalniho scrollu
+;
+; Velikost binarky je 115 bytu.
+;
+; Predpoklady:
+; - smazana obrazovka
+; - identicke mapovani pro zeleny bitplane
+
+red1   EQU 0e6h
+red2   EQU 0e7h
+green1 EQU 0eah
+green2 EQU 0ebh
+blue1  EQU 0eeh
+blue2  EQU 0efh
+
+line_width EQU 020h
+pole_width EQU 010h
+rows EQU 256
+
+r_plane EQU 06000h
+g_plane EQU 0a000h
+b_plane EQU 0e000h
+
+rgb EQU 0cch
+
+black EQU 8
+red   EQU 9
+blue  EQU 12
+white EQU 15
+
+	ORG 1000h
+
+setup:
+	MVI A, red1
+	OUT red1            ; identicke mapovani cerveneho bitplanu (prvni blok)
+	INR A
+	OUT red2            ; identicke mapovani cerveneho bitplanu (druhy blok)
+
+;	MVI A, green1
+;	OUT green1          ; identicke mapovani zeleneho bitplanu (prvni blok)
+;	INR A
+;	OUT green2          ; identicke mapovani zeleneho bitplanu (druhy blok)
+
+	MVI A, blue1
+	OUT blue1           ; identicke mapovani modreho bitplanu (prvni blok)
+	INR A
+	OUT blue2           ; identicke mapovani modreho bitplanu (druhy blok)
+
+
+; nakresli prvni radek tyce
+first:
+	LXI D, 0ffffh          ; vsechny bity
+	LXI SP, g_plane + 18h  ; prvni sloupec za poslednim sloupcem tyce na prvni radce
+	LXI H, colors
+	MVI C, 4
+
+nc:
+	MOV A, M
+	OUT rgb
+
+	PUSH D
+	PUSH D
+
+	INX H
+	DCR C
+	JNZ nc
+
+
+; nakresli dalsi radky tyce
+rest:
+	XRA A
+	OUT rgb                ; nyni budeme kreslit do kazdeho bitplanu zvlast
+
+	LXI H, 0h
+	DAD SP                 ; HL = SP
+
+	LXI SP, stack
+
+	CALL next_plane
+
+	LXI H, r_plane + (line_width / 4)
+	CALL next_plane
+	LXI H, b_plane + (line_width / 4)
+	CALL next_plane
+
+spin:
+	MVI B, 4
+outer:
+	MVI C, 0
+loop:
+	DCR C
+	JNZ loop
+	DCR B
+	JNZ outer
+
+	INR A
+	OUT 0c0h
+	JMP spin
+
+
+; HL ukazuje na zacatek predchozi radky
+next_plane:
+	MVI E, rows - 1
+
+next:
+	MOV B, H
+	MOV C, L               ; BC ukazuje na zdrojovy radek
+
+	LXI H, line_width
+	DAD B                  ; HL ukazuje na novy radek
+
+	PUSH H                 ; uloz si zacatek noveho radku
+
+	MVI D, pole_width
+
+	; CY je po DAB 0
+rotate:
+	LDAX B                 ; A = [BC]
+	RAR                    ; bit 0 vypadne do CY, bit 7 nastav na CY
+	MOV M, A               ; [HL] = A
+	INX B
+	INX H
+
+	DCR D                  ; zaznamenej hotovy byte radky (neznici CY)
+	JNZ rotate             ; cely radek tyce?
+
+	POP H                  ; obnov zapamatovany zacatek noveho radku
+	JNC skip               ; pokud nebyl posledni bit 1, preskoc
+
+	MOV A, M               ; precti prvni byte prvniho sloupce tyce
+	ORI 080h               ; nastav na 1 nejvyssi bit
+	MOV M, A               ; uloz zpatky do pameti
+
+skip:
+	DCR E                  ; zaznamenej dokonceni radku
+	JNZ next               ; vsechny radky?
+
+	RET
+
+colors:
+	DB white, red, white, blue
+
+	DS 3 * 2
+stack:
