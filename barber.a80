@@ -1,3 +1,6 @@
+rbytes  EQU 32
+rows    EQU 256
+
 pbytes  EQU 16
 
 g_plane EQU 0a000h
@@ -10,19 +13,19 @@ rgb     EQU 0cch
 	ORG 1000h
 
 	LXI SP, stack_end
-	LXI H, g_plane
+	LXI H, g_plane + (rows * rbytes) - 1
 
 	; Generate pattern (shorter code) and initialize C
 	LXI B, 0
 	LXI D, 0ffffh
-	PUSH B
-	PUSH B
 	PUSH D
 	PUSH D
 	PUSH B
 	PUSH B
 	PUSH D
 	PUSH D
+	PUSH B
+	PUSH B
 
 line:
 	PUSH B
@@ -32,7 +35,7 @@ line:
 	;
 	; Draw and rotate the color pattern
 	;
-	LXI D, pattern
+	LXI D, pattern + pbytes - 1
 	PUSH D	; remember for 1-byte restore later
 	MVI C, pbytes
 
@@ -58,7 +61,7 @@ n1:
 	; read the pattern byte, make a copy, rotate and write back
 	LDAX D
 	MOV B, A
-	RAR
+	RAL
 	STAX D
 	MOV M, B
 
@@ -69,19 +72,17 @@ n1:
 	CMA
 	MOV M, A
 
-	INX D	; next pattern byte next time
-	INX H	; next 8 pixels next time
+	DCX D	; next pattern byte next time
+	DCX H	; next 8 pixels next time
 
 	DCR C
 	JNZ n1
 
 	; rotate the wrap-around bit
 	POP D
-	JNC skip
 	LDAX D
-	ORI 80h
+	ADC C	; add CY (C is 0) to bit 0 (which is 0)
 	STAX D
-skip:
 
 	CALL draw_border
 
@@ -121,14 +122,14 @@ draw_border:
 	LXI B, 0ff08h
 n0:
 	MOV M, B
-	INX H
+	DCX H
 	DCR C
 	JNZ n0
 
 	RET
 
 stack:
-	DS 4 * 2
+	DS 3 * 2
 pattern:
 	DS pbytes
 stack_end:
