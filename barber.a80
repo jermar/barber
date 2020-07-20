@@ -17,6 +17,9 @@ rgb     EQU 0cch
 
 	; Generate pattern (shorter code) and initialize C
 	LXI B, 0
+color_plus_1:
+color	EQU color_plus_1 - 1
+
 	LXI D, 0ffffh
 	PUSH D
 	PUSH D
@@ -124,9 +127,6 @@ loop:
 	INR A
 	OUT 0c0h
 	JMP spin
-
-color:
-	DB 0
 
 stack:
 	DS 3 * 2
