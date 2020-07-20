@@ -30,7 +30,24 @@ rgb     EQU 0cch
 line:
 	PUSH B
 
-	CALL draw_border
+	XRA A	; clear CY
+
+	; Draw 64 black aligned pixels to the current position in video RAM
+	;
+	; A   scratch
+	; BC  scratch
+	; HL  address in green video RAM
+draw_border:
+	MVI A, black
+	OUT rgb
+	LXI B, 0ff08h
+n0:
+	MOV M, B
+	DCX H
+	DCR C
+	JNZ n0
+
+	RC	; only return if called
 
 	;
 	; Draw and rotate the color pattern
@@ -39,7 +56,6 @@ line:
 	PUSH D	; remember for 1-byte restore later
 	MVI C, pbytes
 
-	XRA A	; clear CY
 n1:
 	PUSH PSW
 
@@ -84,6 +100,7 @@ n1:
 	ADC C	; add CY (C is 0) to bit 0 (which is 0)
 	STAX D
 
+	STC	; let draw_border know this is a call
 	CALL draw_border
 
 	POP B
@@ -110,23 +127,6 @@ loop:
 
 color:
 	DB 0
-
-; Draw 64 black aligned pixels to the current position in video RAM
-;
-; A   scratch
-; BC  scratch
-; HL  address in green video RAM
-draw_border:
-	MVI A, black
-	OUT rgb
-	LXI B, 0ff08h
-n0:
-	MOV M, B
-	DCX H
-	DCR C
-	JNZ n0
-
-	RET
 
 stack:
 	DS 3 * 2
