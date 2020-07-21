@@ -106,14 +106,13 @@ n1:
 	STC	; let draw_border know this is a call
 	CALL draw_border
 
-	POP B
-
 	; every 32 lines (one color segment), rotate color by 1/4
 	LXI D, color
 	LDAX D
 	SUI 2
 	STAX D
 
+	POP B
 	DCR C
 	JNZ line
 
