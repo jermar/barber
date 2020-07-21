@@ -56,7 +56,6 @@ n0:
 	; Draw and rotate the color pattern
 	;
 	LXI D, pattern + pbytes - 1
-	PUSH D	; remember for 1-byte restore later
 	MVI C, pbytes
 
 n1:
@@ -98,7 +97,7 @@ n1:
 	JNZ n1
 
 	; rotate the wrap-around bit
-	POP D
+	MVI E, (pattern + pbytes - 1) & 0ffh
 	LDAX D
 	ADC C	; add CY (C is 0) to bit 0 (which is 0)
 	STAX D
@@ -107,7 +106,7 @@ n1:
 	CALL draw_border
 
 	; every 32 lines (one color segment), rotate color by 1/4
-	LXI D, color
+	MVI E, color & 0ffh
 	LDAX D
 	SUI 2
 	STAX D
@@ -129,7 +128,7 @@ loop:
 	JMP spin
 
 stack:
-	DS 3 * 2
+	DS 2 * 2
 pattern:
 	DS pbytes
 stack_end:
