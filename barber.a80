@@ -16,7 +16,7 @@ rgb     EQU 0cch
 
 	LXI B, 0	; BC used for pattern generation, C used as a line counter
 
-color_plus_1:
+color_plus_1:		; the immediate 0 is later used as color
 color	EQU color_plus_1 - 1
 
 	LXI D, 0ffffh	; DE used for pattern generation and to draw black border
@@ -45,7 +45,7 @@ line:
 	PUSH D
 
 	LXI H, pattern
-	MVI B, 8
+	MOV B, A
 
 	CMP A ; clear CY
 pole:
