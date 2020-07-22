@@ -84,10 +84,10 @@ pole:
 	INX H
 
 	PUSH D
-	INX SP
+	INX SP		; cannot use POP PSW to preserve CY
 	INX SP
 
-	; print inverted pattern in white 
+	; print the inverted pattern in white
 	MVI A, white
 	OUT rgb
 	MOV A, E
@@ -107,7 +107,7 @@ pole:
 	ADC B 		; B is 0, only adding CY
 	MOV M, A
 
-	; rotate color every 16 lines
+	; rotate color by 1/4 in 32 lines (one color segment)
 	MVI L, color & 0ffh
 	MOV A, M
 	SUI 2
